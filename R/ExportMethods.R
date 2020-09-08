@@ -330,8 +330,27 @@ setMethod("exportTSStable",signature(object = "TSSr"), function(object, data, me
   message("Exporting TSS table...")
   if(data == "raw"){
     if(merged == "TRUE"){
-      tss <- object@TSSprocessedMatrix
-      write.table(tss, file = paste("ALL.samples.TSS",data,"txt", sep = "."), sep = "\t", quote = F, row.names = F)
+      tss <- object@TSSrawMatrix
+      mergeIndex <- object@mergeIndex
+      sampleLabels <- object@sampleLabels
+      sampleLabelsMerged <- object@sampleLabelsMerged
+      objName <- deparse(substitute(object))
+      if(length(mergeIndex) != length(sampleLabels)){
+        stop("Length of mergeIndex must match number of samples.")
+      }
+      if(length(unique(mergeIndex)) != length(sampleLabelsMerged)){
+        stop("Number of unique mergeIndex must match number of sampleLabelsMerged.")
+      }
+
+      tss.new <- lapply(as.list(seq(unique(mergeIndex))), function(i){
+        tss.sub <- tss[, .SD, .SDcols = sampleLabels[which(mergeIndex == i)]]
+        tss.sub[,sampleLabelsMerged[i] := rowSums(tss.sub)]
+        return(tss.sub[, .SD, .SDcols =sampleLabelsMerged[i]])
+      })
+      re <- NULL
+      for(i in seq(sampleLabelsMerged)){re <- cbind(re, tss.new[[i]])}
+      re <- cbind(tss[,1:3],re)
+      write.table(re, file = paste("ALL.samples.TSS",data,"merged.txt", sep = "."), sep = "\t", quote = F, row.names = F)
     }else{
       tss <- object@TSSrawMatrix
       write.table(tss, file = paste("ALL.samples.TSS",data,"txt", sep = "."), sep = "\t", quote = F, row.names = F)
